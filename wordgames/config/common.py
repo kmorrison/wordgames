@@ -85,7 +85,7 @@ class Common(Configuration):
     # See: https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
     # Note: This key only used for development and testing.
     #       In production, this is changed to a values.SecretValue() setting
-    SECRET_KEY = "CHANGEME!!!"
+    SECRET_KEY = "some_super_secrey_key"
     # END SECRET CONFIGURATION
 
     # FIXTURE CONFIGURATION
@@ -111,7 +111,8 @@ class Common(Configuration):
 
     # DATABASE CONFIGURATION
     # See: https://docs.djangoproject.com/en/dev/ref/settings/#databases
-    DATABASES = values.DatabaseURLValue('postgres://localhost/wordgames')
+    # XXX: I can't be bothered setting up postgres or vagrant on every machine. Hopefully this never bites me.
+    #DATABASES = values.DatabaseURLValue('postgres://localhost/wordgames')
     # END DATABASE CONFIGURATION
 
     # CACHING

@@ -6,11 +6,28 @@ Local Configurations
 - Uses console backend for emails
 - Use Django Debug Toolbar
 '''
+from os.path import join, normpath
+
 from configurations import values
+from .common import BASE_DIR
 from .common import Common
 
 
 class Local(Common):
+
+    ########## DATABASE CONFIGURATION
+    # See: https://docs.djangoproject.com/en/dev/ref/settings/#databases
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': normpath(join(BASE_DIR, 'default.db')),
+            'USER': '',
+            'PASSWORD': '',
+            'HOST': '',
+            'PORT': '',
+        }
+    }
+    ########## END DATABASE CONFIGURATION
 
     # DEBUG
     DEBUG = values.BooleanValue(True)
