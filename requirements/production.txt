@@ -2,7 +2,9 @@
 #	production that isn't in development.
 -r base.txt
 
-gunicorn==19.1.1
+# For the persistance stores
+psycopg2==2.5.4
+
 django-storages==1.1.8
 Collectfast==0.2.1
 gevent==1.0.1
