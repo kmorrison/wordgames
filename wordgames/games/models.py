@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from django.db import models
 from users.models import User
 
@@ -10,11 +12,15 @@ class Player(models.Model):
 
 class Game(models.Model):
     time_created = models.DateTimeField(auto_now_add=True)
+    time_last_activity = models.DateTimeField(
+        auto_now_add=True,
+        auto_now=True,
+    )
     time_ended = models.DateTimeField(null=True)
 
     players = models.ManyToManyField(
-        Player, 
-        through='GamePlayer', 
+        Player,
+        through='GamePlayer',
         related_name='players',
     )
 

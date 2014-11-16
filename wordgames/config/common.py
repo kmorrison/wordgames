@@ -49,6 +49,7 @@ class Common(Configuration):
         'users',  # custom users app
         # Your stuff: custom apps go here
         'games',
+        'ghost',
     )
 
     # See: https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
