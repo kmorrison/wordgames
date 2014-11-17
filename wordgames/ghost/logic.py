@@ -4,9 +4,11 @@ from collections import namedtuple
 import random
 
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 from enum import Enum
 
 from games import models as game_models
+from words.words import wordlist
 
 from . import models
 
@@ -18,6 +20,9 @@ class InvalidGuessException(Exception):
     pass
 
 class StaleOperation(Exception):
+    pass
+
+class StateMachineError(Exception):
     pass
 
 
@@ -33,6 +38,16 @@ GameStatePresenter = namedtuple('GameStatePresenter', [
     'is_over',
     'ending_reason',
 ])
+
+class PartialWordChecker(object):
+    @classmethod
+    def one_starts_with_other(cls, partial, whole):
+        return whole.startswith(partial)
+
+    @classmethod
+    def for_game_type(cls, game_type):
+        if game_type == models.GameType.APPEND:
+            return cls.one_starts_with_other
 
 class GhostLogic(object):
 
@@ -67,7 +82,7 @@ class GhostLogic(object):
             challenge = None
 
         return GameStatePresenter(
-            game_type=ghost_game.game_type,
+            game_type=models.GameType(ghost_game.game_type),
             game_player_to_move=game_player_to_move,
 
             word_so_far=word_so_far,
@@ -175,6 +190,13 @@ class GhostLogic(object):
     @classmethod
     @transaction.atomic
     def issue_challenge(cls, game_player):
+        if models.Challenge.objects.filter(
+            game_player_id=game_player.id,
+        ).exists():
+            return models.Challenge.objects.get(
+                game_player_id=game_player.id,
+            )
+
         game_state = cls.current_game_state(game_player.game_id)
         cls._validate_is_playing(
             game_state,
@@ -191,3 +213,41 @@ class GhostLogic(object):
         )
         challenge.save()
         return challenge
+
+    @classmethod
+    def respond_to_challenge(cls, game_player, intended_word):
+        game_state = cls.current_game_state(game_player.game_id)
+        # Idempotence check
+        if game_state.is_over:
+            try:
+                # Have to join because player responding to
+                # challenge won't be the one who made it.
+                challenge = models.Challenge.objects.get(
+                    game_player_id__game_id=game_player.game_id,
+                )
+                if challenge.response != intended_word:
+                    raise StateMachineError(str(game_player.game_id))
+                return challenge
+            except ObjectDoesNotExist:
+                raise StateMachineError(
+                    "Responding to challenge, but game:%s ended with %s" % (
+                    game_player.game_id,
+                    game_state.ending_reason,
+                ))
+
+        if not game_state.is_challenge_issued:
+            raise StateMachineError("Challenge new issued, cannot respond (Game:%s)" % (game_player.game_id))
+
+        challenge = models.Challenge.objects.get(
+            game_player_id__game_id=game_player.game_id,
+        )
+        challenge.response = intended_word
+
+        responder_wins = bool(
+            intended_word in wordlist.wordset
+            and PartialWordChecker.for_game_type(
+                game_state.game_type
+            )(game_state.word_so_far, intended_word)
+        )
+        return challenge
+

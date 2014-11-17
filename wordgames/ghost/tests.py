@@ -233,7 +233,7 @@ class LogicIssueChallengeTestCase(TestCase):
                 self.game_player1,
             )
 
-    def test_cannot_challenge_twice(self):
+    def test_challenge_is_idempotent(self):
         GhostLogic.new_guess(
             self.game_player1,
             'f',
@@ -242,11 +242,57 @@ class LogicIssueChallengeTestCase(TestCase):
         challenge = GhostLogic.issue_challenge(
             self.game_player2,
         )
-        with self.assertRaises(StaleOperation):
-            challenge = GhostLogic.issue_challenge(
-                self.game_player2,
-            )
+        idem_challenge = GhostLogic.issue_challenge(
+            self.game_player2,
+        )
+        self.assertEqual(
+            challenge.id,
+            idem_challenge.id,
+        )
         with self.assertRaises(StaleOperation):
             challenge = GhostLogic.issue_challenge(
                 self.game_player1,
             )
+
+class LogicChallengeResponseTestCase(TestCase):
+
+    def setUp(self):
+        self.player1 = game_models.Player()
+        self.player1.save()
+        self.player2 = game_models.Player()
+        self.player2.save()
+        self.ghost_game = GhostLogic.start_game(
+            self.player1,
+            self.player2,
+            first_player_starts_first=True,
+        )
+        self.game_player1 = game_models.GamePlayer.objects.get(
+            game_id=self.ghost_game.game_id,
+            player_id=self.player1.id,
+        )
+        self.game_player2 = game_models.GamePlayer.objects.get(
+            game_id=self.ghost_game.game_id,
+            player_id=self.player2.id,
+        )
+
+    def test_happy_flow(self):
+        GhostLogic.new_guess(
+            self.game_player1,
+            'f',
+            0,
+        )
+        challenge = GhostLogic.issue_challenge(
+            self.game_player2,
+        )
+        challenge_modified = GhostLogic.respond_to_challenge(
+            self.game_player1,
+            'fork',
+        )
+        self.assertEqual(
+            challenge.id,
+            challenge_modified.id,
+        )
+        self.assertEqual(
+            challenge_modified.response,
+            'fork',
+        )

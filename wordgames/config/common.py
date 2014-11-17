@@ -268,3 +268,4 @@ class Common(Configuration):
     # END LOGGING CONFIGURATION
 
     # Your common stuff: Below this line define 3rd party library settings
+    BASE_DIR = BASE_DIR
