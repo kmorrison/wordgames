@@ -10,7 +10,7 @@ class WordList(object):
     @cached_property
     def wordlist(self):
         with open(os.path.join(config.BASE_DIR, 'lowerwords.txt')) as word_file:
-            return [line for line in word_file]
+            return [line.strip() for line in word_file]
 
     @cached_property
     def wordset(self):

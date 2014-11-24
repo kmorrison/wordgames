@@ -8,6 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from enum import Enum
 
 from games import models as game_models
+from games import logic as game_logic
 from words.words import wordlist
 
 from . import models
@@ -48,6 +49,7 @@ class PartialWordChecker(object):
     def for_game_type(cls, game_type):
         if game_type == models.GameType.APPEND:
             return cls.one_starts_with_other
+
 
 class GhostLogic(object):
 
@@ -128,20 +130,6 @@ class GhostLogic(object):
         ghost_game.save()
 
         return ghost_game
-
-    @classmethod
-    def _determine_if_is_to_move(cls, game_player):
-        ghost_game = models.GhostGame.objects.get(
-            game_id=game_player.game_id,
-        )
-        all_guesses = models.NewLetter.objects.filter(
-            game_player__game_id=game_player.game_id,
-        )
-        if not all_guesses:
-            return game_player.plays_first
-
-        most_recent_guess = max(all_guesses, key=lambda guess: guess.id)
-        return not (most_recent_guess.game_player_id == game_player.id)
 
     @classmethod
     def _validate_next_guess_position(cls, game_state, position):
@@ -249,5 +237,18 @@ class GhostLogic(object):
                 game_state.game_type
             )(game_state.word_so_far, intended_word)
         )
-        return challenge
 
+        if responder_wins:
+            game_ending_reason = models.GameEndingReason.CHALLENGE_LOST
+            winning_game_player_id = game_player.id
+        else:
+            game_ending_reason = models.GameEndingReason.CHALLENGE_WON
+            winning_game_player_id = game_models.GamePlayer.objects.exclude(id=game_player.id).get(game_id=game_player.game_id).id
+
+        ghost_game = models.GhostGame.objects.get(game_id=game_player.game_id)
+        ghost_game.ending_reason = game_ending_reason.value
+        ghost_game.save()
+
+        game_logic.GamesLogic.end_game(game_player.game_id, winning_game_player_id)
+
+        return challenge

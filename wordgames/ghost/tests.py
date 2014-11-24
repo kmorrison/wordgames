@@ -275,7 +275,7 @@ class LogicChallengeResponseTestCase(TestCase):
             player_id=self.player2.id,
         )
 
-    def test_happy_flow(self):
+    def test_challenger_loses(self):
         GhostLogic.new_guess(
             self.game_player1,
             'f',
@@ -296,3 +296,43 @@ class LogicChallengeResponseTestCase(TestCase):
             challenge_modified.response,
             'fork',
         )
+
+        current_game_state = GhostLogic.current_game_state(
+            self.ghost_game.game_id,
+        )
+        self.assertEqual(
+            models.GameEndingReason(current_game_state.ending_reason),
+            models.GameEndingReason.CHALLENGE_LOST,
+        )
+        self.assertTrue(current_game_state.is_over)
+
+    def test_challenger_wins(self):
+        GhostLogic.new_guess(
+            self.game_player1,
+            'f',
+            0,
+        )
+        challenge = GhostLogic.issue_challenge(
+            self.game_player2,
+        )
+        challenge_modified = GhostLogic.respond_to_challenge(
+            self.game_player1,
+            'spork',
+        )
+        self.assertEqual(
+            challenge.id,
+            challenge_modified.id,
+        )
+        self.assertEqual(
+            challenge_modified.response,
+            'spork',
+        )
+
+        current_game_state = GhostLogic.current_game_state(
+            self.ghost_game.game_id,
+        )
+        self.assertEqual(
+            models.GameEndingReason(current_game_state.ending_reason),
+            models.GameEndingReason.CHALLENGE_WON,
+        )
+        self.assertTrue(current_game_state.is_over)
