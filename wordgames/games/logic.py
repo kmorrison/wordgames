@@ -7,6 +7,12 @@ from . import models
 class GamesLogic(object):
 
     @classmethod
+    def create_player_for_user(cls, user):
+        models.Player(
+            user_id=user.id,
+        ).save()
+
+    @classmethod
     def end_game(cls, game_id, winning_game_player_id):
         game = models.Game.objects.get(id=game_id)
         game.time_ended = timezone.now()

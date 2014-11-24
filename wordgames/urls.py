@@ -30,5 +30,6 @@ urlpatterns = patterns('',
 
     # Your stuff: custom urls go here
     url(r'^games/', include('games.urls')),
+    url(r'^ghost/', include('ghost.urls')),
 
 ) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
