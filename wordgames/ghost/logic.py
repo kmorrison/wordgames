@@ -203,6 +203,7 @@ class GhostLogic(object):
         return challenge
 
     @classmethod
+    @transaction.atomic
     def respond_to_challenge(cls, game_player, intended_word):
         game_state = cls.current_game_state(game_player.game_id)
         # Idempotence check
@@ -243,7 +244,9 @@ class GhostLogic(object):
             winning_game_player_id = game_player.id
         else:
             game_ending_reason = models.GameEndingReason.CHALLENGE_WON
-            winning_game_player_id = game_models.GamePlayer.objects.exclude(id=game_player.id).get(game_id=game_player.game_id).id
+            winning_game_player_id = game_models.GamePlayer.objects.exclude(
+                id=game_player.id
+            ).get(game_id=game_player.game_id).id
 
         ghost_game = models.GhostGame.objects.get(game_id=game_player.game_id)
         ghost_game.ending_reason = game_ending_reason.value
