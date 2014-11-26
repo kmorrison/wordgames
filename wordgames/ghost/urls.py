@@ -9,4 +9,5 @@ urlpatterns = patterns('',
     url(r'^$', views.landing, name='landing'),
     url(r'^new_game_post$', views.new_game, name='new_game'),
     url(r'^game/(?P<ghost_game_id>\d+)/$', views.game_view, name='game_view'),
+    url(r'^game/(?P<ghost_game_id>\d+)/new_letter$', views.new_letter_post, name='new_letter'),
 )

@@ -1,5 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
-{{ hello }}
+<div class="game_state">
+</div>
+<div id="action_div">
+    {% for letter in game_state_presenter.word_so_far %}
+        <span class="ghost-letter">{{letter}}</span>
+    {% endfor %}
+    {% if game_state_presenter.game_type.value == 'APPEND' and requesting_game_player.id == game_state_presenter.game_player_to_move.id%}
+        <form action="{% url 'ghost:new_letter' ghost_game_id=ghost_game_id %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="position" type="number" value={{game_state_presenter.legal_positions_to_play|first}}>
+            <span class="ghost-letter">
+                <input type="text" name="letter" placeholder="Aa" max_length="1" size=2>
+            </span>
+            <input class="ghost-submit" type="submit" value="Guess" />
+        </form>
+    {% endif %}
+</div>
 {% endblock %}

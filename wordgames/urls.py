@@ -29,7 +29,7 @@ urlpatterns = patterns('',
     url(r'^avatar/', include('avatar.urls')),
 
     # Your stuff: custom urls go here
-    url(r'^games/', include('games.urls')),
-    url(r'^ghost/', include('ghost.urls')),
+    url(r'^games/', include('games.urls', namespace='games')),
+    url(r'^ghost/', include('ghost.urls', namespace='ghost')),
 
 ) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

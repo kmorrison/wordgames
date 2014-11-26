@@ -99,6 +99,9 @@ class GhostLogic(object):
     @classmethod
     @transaction.atomic
     def start_game(cls, player1, player2, game_type=models.GameType.APPEND, first_player_starts_first=None):
+        if player1.id == player2.id:
+            raise AssertionError("Cannot start game with yourself")
+
         new_game = game_models.Game()
         new_game.save()
 
