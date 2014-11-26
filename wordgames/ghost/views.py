@@ -6,6 +6,7 @@ from django.shortcuts import redirect
 from django.shortcuts import get_object_or_404
 from django.template import RequestContext
 
+from games import logic as games_logic
 from games import models as games_models
 from . import models
 from . import logic
@@ -27,6 +28,11 @@ class NewGameForm(forms.Form):
 class NewLetterForm(forms.Form):
     position = forms.IntegerField()
     letter = forms.CharField(label="New Letter", max_length=1)
+
+
+class RespondToChallengeForm(forms.Form):
+    response = forms.CharField(label="New Letter", max_length=64)
+
 
 def _load_player_for_game(request, ghost_game):
     player = games_models.Player.objects.get(
@@ -95,12 +101,15 @@ def game_view(request, ghost_game_id):
         except games_models.GamePlayer.DoesNotExist:
             game_player = None
 
+    if game_state_presenter.winning_player is not None:
+        winning_player = games_logic.GamesLogic.load_player(game_state_presenter.winning_player.id)
     return render_to_response(
         'ghost/game_view.html',
         dict(
             requesting_game_player=game_player,
             game_state_presenter=game_state_presenter,
             ghost_game_id=ghost_game.id,
+            winning_player=winning_player or None,
         ),
         RequestContext(request),
     )
@@ -130,7 +139,7 @@ def new_letter_post(request, ghost_game_id):
     try:
         logic.GhostLogic.new_guess(
             game_player,
-            form.cleaned_data['letter'].upper(),
+            form.cleaned_data['letter'].lower(),
             form.cleaned_data['position'],
         )
     except logic.InvalidGuessException:
@@ -174,7 +183,7 @@ def challenge(request, ghost_game_id):
         )
 
     game_state_presenter = logic.GhostLogic.current_game_state(ghost_game.game_id)
-    messages.info(request, "Waiting for your opponent to tell us what they will spell with %s" % (game_state_presenter.word_so_far,))
+    messages.info(request, "Waiting for your opponent to tell us what they will spell with %s" % (game_state_presenter.word_so_far.upper(),))
     return redirect(
         'ghost:game_view',
         ghost_game_id=ghost_game.id,
@@ -182,4 +191,43 @@ def challenge(request, ghost_game_id):
 
 @login_required
 def challenge_respond(request, ghost_game_id):
-    pass
+    ghost_game = get_object_or_404(models.GhostGame, pk=ghost_game_id)
+    game_player = _load_player_for_game(request, ghost_game)
+    if game_player is None:
+        # The player submitted a guess for a game that wasn't theirs. Naughty.
+        # Show them the game they yearn for so badly.
+        messages.error(request, "That's not your game!")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
+    form = RespondToChallengeForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Something wrong with your response. Try again.")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
+
+    try:
+        challenge = logic.GhostLogic.respond_to_challenge(
+            game_player,
+            form.cleaned_data['response'].lower(),
+        )
+    except (logic.InvalidGuessException, logic.StaleOperation, logic.StateMachineError):
+        messages.error(request, "Can't do that right now. Sorry.")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
+
+    game_state_presenter = logic.GhostLogic.current_game_state(ghost_game.game_id)
+    if game_state_presenter.ending_reason == models.GameEndingReason.CHALLENGE_LOST:
+        messages.success(request, 'You won! "%s" is a sweet word' % (challenge.response.upper(),))
+    elif game_state_presenter.ending_reason == models.GameEndingReason.CHALLENGE_WON:
+        messages.error(request, 'You lost! "%s" not a word, according to our databases.' % (challenge.response.upper(),))
+
+    return redirect(
+        'ghost:game_view',
+        ghost_game_id=ghost_game.id,
+    )

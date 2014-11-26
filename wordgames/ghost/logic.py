@@ -38,12 +38,13 @@ GameStatePresenter = namedtuple('GameStatePresenter', [
     'is_challenge_issued',
     'is_over',
     'ending_reason',
+    'winning_player',
 ])
 
 class PartialWordChecker(object):
     @classmethod
     def one_starts_with_other(cls, partial, whole):
-        return whole.startswith(partial)
+        return whole.lower().startswith(partial.lower())
 
     @classmethod
     def for_game_type(cls, game_type):
@@ -71,17 +72,26 @@ class GhostLogic(object):
             game_id=game_id,
         ).all()
 
-        if not all_guesses:
-            game_player_to_move, = [game_player for game_player in game_players if game_player.plays_first]
-        else:
-            most_recent_guess = max(all_guesses, key=lambda guess: guess.id)
-            game_player_to_move, = [game_player for game_player in game_players if game_player.id != most_recent_guess.game_player_id]
-
         possible_challenges = models.Challenge.objects.filter(game_player__game_id=game_id)
         if possible_challenges:
             challenge = possible_challenges[0]
         else:
             challenge = None
+
+        if not all_guesses:
+            game_player_to_move, = [game_player for game_player in game_players if game_player.plays_first]
+        else:
+            most_recent_guess = max(all_guesses, key=lambda guess: guess.id)
+            if challenge is None:
+                game_player_to_move, = [game_player for game_player in game_players if game_player.id != most_recent_guess.game_player_id]
+            else:
+                game_player_to_move, = [game_player for game_player in game_players if game_player.id == most_recent_guess.game_player_id]
+
+        if any(game_player.has_won for game_player in game_players):
+            winning_player, = [game_player for game_player in game_players if game_player.has_won]
+        else:
+            winning_player = None
+
 
         return GameStatePresenter(
             game_type=models.GameType(ghost_game.game_type),
@@ -91,9 +101,10 @@ class GhostLogic(object):
             legal_positions_to_play=legal_positions_to_play,
 
             is_over=bool(game.time_ended is not None),
-            ending_reason=ghost_game.ending_reason,
+            ending_reason=models.GameEndingReason(ghost_game.ending_reason),
             is_challenge_issued=bool(game.time_ended is None) and bool(challenge is not None),
             is_playing=bool(game.time_ended is None) and bool(challenge is None),
+            winning_player=winning_player,
         )
 
     @classmethod

@@ -4,11 +4,14 @@
 <div class="game_state">
 </div>
 <div id="action_div">
+    {% if game_state_presenter.is_over %}
+        <h1>{{winning_player.name}} wins!</h1>
+    {% endif %}
     {% if game_state_presenter.is_challenge_issued and requesting_game_player.id != game_state_presenter.game_player_to_move.id%}
         <h1>Game is waiting on challenge response.</h1>
     {% endif %}
     {% for letter in game_state_presenter.word_so_far %}
-        <span class="ghost-letter">{{letter}}</span>
+        <span class="ghost-letter">{{letter|upper}}</span>
     {% endfor %}
     {% if game_state_presenter.game_type.value == 'APPEND' and requesting_game_player.id == game_state_presenter.game_player_to_move.id and game_state_presenter.is_playing %}
 
@@ -38,13 +41,34 @@
 
 
     {% endif %}
-    {% if requesting_game_player.id == game_state_presenter.game_player_to_move.id and game_state_presenter.is_playing %}
     <div class="challenge-wrapper">
+    {% if requesting_game_player.id == game_state_presenter.game_player_to_move.id and game_state_presenter.is_playing %}
         <form action="{% url 'ghost:challenge' ghost_game_id=ghost_game_id %}" method="post">
         {% csrf_token %}
         <input class="btn btn-lg btn-danger" type="submit" value="Challenge"/>
         </form>
-    </div>
     {% endif %}
+
+    {% if requesting_game_player.id == game_state_presenter.game_player_to_move.id and game_state_presenter.is_challenge_issued %}
+        <button class="btn btn-lg btn-danger" data-toggle="modal" data-target="#challenge-response-modal">Respond to Challenge</button>
+
+        <div class="modal fade" id="challenge-response-modal">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-body input-group">
+                <form action="{% url 'ghost:respond' ghost_game_id=ghost_game_id %}" method="post">
+                {% csrf_token %}
+                <input class="form-control" type="text" name="response" placeholder="Word you were trying to spell" max_length="64">
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <input class="btn btn-primary" type="submit" value="Respond" />
+            </form>
+              </div>
+            </div><!-- /.modal-content -->
+          </div><!-- /.modal-dialog -->
+        </div><!-- /.modal -->
+    {% endif %}
+    </div>
 </div>
 {% endblock %}
