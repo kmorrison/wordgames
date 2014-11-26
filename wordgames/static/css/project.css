@@ -43,10 +43,13 @@
     border-radius: 5px;
     width: 70px;
     text-align: center;
+    height: 60px;
 }
 
-.ghost-letter input {
-    width: 50px;
+.challenge-wrapper {
+    display: block;
+    clear: left;
+    margin-left: 10px;
 }
 
 .ghost-submit {

@@ -4,18 +4,47 @@
 <div class="game_state">
 </div>
 <div id="action_div">
+    {% if game_state_presenter.is_challenge_issued and requesting_game_player.id != game_state_presenter.game_player_to_move.id%}
+        <h1>Game is waiting on challenge response.</h1>
+    {% endif %}
     {% for letter in game_state_presenter.word_so_far %}
         <span class="ghost-letter">{{letter}}</span>
     {% endfor %}
-    {% if game_state_presenter.game_type.value == 'APPEND' and requesting_game_player.id == game_state_presenter.game_player_to_move.id%}
-        <form action="{% url 'ghost:new_letter' ghost_game_id=ghost_game_id %}" method="post">
-            {% csrf_token %}
-            <input type="hidden" name="position" type="number" value={{game_state_presenter.legal_positions_to_play|first}}>
-            <span class="ghost-letter">
-                <input type="text" name="letter" placeholder="Aa" max_length="1" size=2>
-            </span>
-            <input class="ghost-submit" type="submit" value="Guess" />
+    {% if game_state_presenter.game_type.value == 'APPEND' and requesting_game_player.id == game_state_presenter.game_player_to_move.id and game_state_presenter.is_playing %}
+
+        <button class="ghost-letter" data-toggle="modal" data-target="#guess-modal"></button>
+
+        <div class="modal fade" id="guess-modal">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title">Enter letter to guess</h4>
+              </div>
+              <div class="modal-body input-group">
+                <form action="{% url 'ghost:new_letter' ghost_game_id=ghost_game_id %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="position" type="number" value={{game_state_presenter.legal_positions_to_play|first}}>
+                <input class="form-control" type="text" name="letter" placeholder="Aa" max_length="1">
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <input class="btn btn-primary" type="submit" value="Guess" />
+            </form>
+              </div>
+            </div><!-- /.modal-content -->
+          </div><!-- /.modal-dialog -->
+        </div><!-- /.modal -->
+
+
+    {% endif %}
+    {% if requesting_game_player.id == game_state_presenter.game_player_to_move.id and game_state_presenter.is_playing %}
+    <div class="challenge-wrapper">
+        <form action="{% url 'ghost:challenge' ghost_game_id=ghost_game_id %}" method="post">
+        {% csrf_token %}
+        <input class="btn btn-lg btn-danger" type="submit" value="Challenge"/>
         </form>
+    </div>
     {% endif %}
 </div>
 {% endblock %}

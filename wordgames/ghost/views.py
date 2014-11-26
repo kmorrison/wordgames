@@ -28,6 +28,18 @@ class NewLetterForm(forms.Form):
     position = forms.IntegerField()
     letter = forms.CharField(label="New Letter", max_length=1)
 
+def _load_player_for_game(request, ghost_game):
+    player = games_models.Player.objects.get(
+        user_id=request.user.id,
+    )
+    try:
+        return games_models.GamePlayer.objects.get(
+            player_id=player.id,
+            game_id=ghost_game.game_id,
+        )
+    except games_models.GamePlayer.DoesNotExist:
+        return None
+
 
 def landing(request):
     player = None
@@ -96,15 +108,8 @@ def game_view(request, ghost_game_id):
 @login_required
 def new_letter_post(request, ghost_game_id):
     ghost_game = get_object_or_404(models.GhostGame, pk=ghost_game_id)
-    player = games_models.Player.objects.get(
-        user_id=request.user.id,
-    )
-    try:
-        game_player = games_models.GamePlayer.objects.get(
-            player_id=player.id,
-            game_id=ghost_game.game_id,
-        )
-    except games_models.GamePlayer.DoesNotExist:
+    game_player = _load_player_for_game(request, ghost_game)
+    if game_player is None:
         # The player submitted a guess for a game that wasn't theirs. Naughty.
         # Show them the game they yearn for so badly.
         messages.error(request, "That's not your game!")
@@ -142,6 +147,39 @@ def new_letter_post(request, ghost_game_id):
         ghost_game_id=ghost_game.id,
     )
 
+@login_required
+def challenge(request, ghost_game_id):
+    # TODO: Dry this up
+    ghost_game = get_object_or_404(models.GhostGame, pk=ghost_game_id)
+    game_player = _load_player_for_game(request, ghost_game)
+    if game_player is None:
+        # The player submitted a guess for a game that wasn't theirs. Naughty.
+        # Show them the game they yearn for so badly.
+        messages.error(request, "That's not your game!")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
 
+    assert request.method == 'POST'
+    try:
+        logic.GhostLogic.issue_challenge(
+            game_player,
+        )
+    except (logic.InvalidGuessException, logic.StaleOperation, logic.StateMachineError):
+        messages.error(request, "Can't do that right now, sorry.")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
 
+    game_state_presenter = logic.GhostLogic.current_game_state(ghost_game.game_id)
+    messages.info(request, "Waiting for your opponent to tell us what they will spell with %s" % (game_state_presenter.word_so_far,))
+    return redirect(
+        'ghost:game_view',
+        ghost_game_id=ghost_game.id,
+    )
 
+@login_required
+def challenge_respond(request, ghost_game_id):
+    pass
