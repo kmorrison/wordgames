@@ -1,13 +1,47 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
 
 {% block content %}
     {% if player %}
+        {% if new_game_form %}
+        <form action="{% url 'ghost:new_game' %}" method="post" role="form">
+            {% csrf_token %}
+            {{ new_game_form|crispy }}
+            <button class="btn btn-default" type="submit">New Game</button>
+        </form>
+        {% endif %}
     {% endif %}
-    {% if new_game_form %}
-    <form action="{% url 'ghost:new_game' %}" method="post">
-        {% csrf_token %}
-        {{ new_game_form.as_p }}
-        <input type="submit" value="New Game" />
-    </form>
-    {% endif %}
+    <div class="current-games">
+    <table class="table table-bordered">
+        <thead><tr>
+            <th>#</th>
+            <th></th>
+            <th></th>
+            <th>Status</th>
+            <th>View</th>
+        </tr></thead>
+        <tbody>
+        {% for game_state in latest_game_states %}
+        <tr>
+            <td>{{forloop.counter}}</td>
+            {% for game_player in game_state.game_players %}
+                <td>{{game_player.player.name}}</td>
+            {% endfor %}
+            <td>
+                {% if game_state.is_playing %}
+                Active
+                {% endif %}
+                {% if game_state.is_challenge_issued %}
+                Challenged
+                {% endif %}
+                {% if game_state.is_over %}
+                {{game_state.winning_player.player.name}} won
+                {% endif %}
+            </td>
+            <td><a href="{% url 'ghost:game_view' ghost_game_id=game_state.id %}">View</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
 {% endblock %}

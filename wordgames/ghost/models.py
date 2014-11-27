@@ -8,7 +8,7 @@ from games import models as game_models
 
 class GameEndingReason(Enum):
 
-    UNKNOWN = 'UKNOWN'
+    UNKNOWN = 'UNKNOWN'
     RESIGN = 'RESIGN'
     CHALLENGE_WON = 'CHALLENGE_WON'
     CHALLENGE_LOST = 'CHALLENGE_LOST'

@@ -41,4 +41,3 @@ class GamesLogic(object):
         else:
             name = ''
         return PlayerPresenter(id=game_player.player_id, name=name)
-

@@ -5,10 +5,13 @@
 </div>
 <div id="action_div">
     {% if game_state_presenter.is_over %}
-        <h1>{{winning_player.name}} wins!</h1>
+        <p>{{winning_player.name}} wins!</p>
     {% endif %}
     {% if game_state_presenter.is_challenge_issued and requesting_game_player.id != game_state_presenter.game_player_to_move.id%}
-        <h1>Game is waiting on challenge response.</h1>
+        <p>Game is waiting on challenge response.</p>
+    {% endif %}
+    {% if game_state_presenter.is_playing and not game_state_presenter.word_so_far %}
+        <p>Waiting for {{game_state_presenter.game_player_to_move.player.name}} to move.</p>
     {% endif %}
     {% for letter in game_state_presenter.word_so_far %}
         <span class="ghost-letter">{{letter|upper}}</span>
@@ -28,11 +31,11 @@
                 <form action="{% url 'ghost:new_letter' ghost_game_id=ghost_game_id %}" method="post">
                 {% csrf_token %}
                 <input type="hidden" name="position" type="number" value={{game_state_presenter.legal_positions_to_play|first}}>
-                <input class="form-control" type="text" name="letter" placeholder="Aa" max_length="1">
+                <input class="form-control" type="text" name="letter" placeholder="Aa" max_length="1" autocomplete="off">
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <input class="btn btn-primary" type="submit" value="Guess" />
+                <button class="btn btn-primary" type="submit">Play</button>
             </form>
               </div>
             </div><!-- /.modal-content -->
@@ -46,7 +49,7 @@
     <div class="ghost-action">
         <form action="{% url 'ghost:challenge' ghost_game_id=ghost_game_id %}" method="post">
         {% csrf_token %}
-        <input class="btn btn-lg btn-primary" type="submit" value="Challenge"/>
+        <button class="btn btn-lg btn-primary" type="submit">Challenge</button>
         </form>
     </div>
     {% endif %}
@@ -62,11 +65,11 @@
               <div class="modal-body input-group">
                 <form action="{% url 'ghost:respond' ghost_game_id=ghost_game_id %}" method="post">
                 {% csrf_token %}
-                <input class="form-control" type="text" name="response" placeholder="Word you were trying to spell" max_length="64">
+                <input class="form-control" type="text" name="response" placeholder="Word you were trying to spell" max_length="64" autocomplete="off">
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <input class="btn btn-primary" type="submit" value="Respond" />
+                <button class="btn btn-primary" type="submit">Respond</button>
             </form>
               </div>
             </div><!-- /.modal-content -->
@@ -78,7 +81,7 @@
     <div class="ghost-action">
         <form action="{% url 'ghost:word_spelled' ghost_game_id=ghost_game_id %}" method="post">
         {% csrf_token %}
-        <input class="btn btn-lg btn-primary" type="submit" value="That's a word"/>
+        <button class="btn btn-lg btn-primary" type="submit">That's a word</button>
         </form>
     </div>
     {% endif %}
@@ -99,7 +102,7 @@
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <input class="btn btn-danger" type="submit" value="Confirm" />
+                <button class="btn btn-danger" type="submit">Confirm</button>
             </form>
               </div>
             </div><!-- /.modal-content -->

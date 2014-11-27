@@ -19,7 +19,9 @@ def _upsert_user(user_id):
     return player
 
 class NewGameForm(forms.Form):
-    other_player_id = forms.IntegerField()
+    player = forms.ChoiceField(
+        choices=[(player.id, player.name) for player in games_models.Player.objects.all()],
+    )
     game_type = forms.TypedChoiceField(
         choices=models.GameType.choices(),
         coerce=models.GameType,
@@ -49,13 +51,17 @@ def _load_player_for_game(request, ghost_game):
 
 def landing(request):
     player = None
-    current_games = []
+
+    # This write-on-get is super dirty. Replace it with signals on the user
+    # sign-up.
     if request.user.is_active:
         player = _upsert_user(request.user.id)
 
+    latest_game_states = logic.GhostLogic.latest_games(n=20)
+
     response = dict(
         player=player,
-        current_games=current_games,
+        latest_game_states=latest_game_states,
         new_game_form=NewGameForm(),
     )
     return render_to_response(
@@ -71,7 +77,7 @@ def new_game(request):
     if not form.is_valid():
         return redirect('ghost:landing')
     player1 = _upsert_user(request.user.id)
-    player2 = games_models.Player.objects.get(id=form.cleaned_data['other_player_id'])
+    player2 = games_models.Player.objects.get(id=form.cleaned_data['player'])
     game_type = form.cleaned_data['game_type']
     new_ghost_game = logic.GhostLogic.start_game(
         player1,
@@ -90,15 +96,15 @@ def game_view(request, ghost_game_id):
     if request.user.is_active:
         # Find out if the user is playing this game.
         # TODO: Make this a straight join.
-        player = games_models.Player.objects.get(
-            user_id=request.user.id,
-        )
         try:
+            player = games_models.Player.objects.get(
+                user_id=request.user.id,
+            )
             game_player = games_models.GamePlayer.objects.get(
                 player_id=player.id,
                 game_id=ghost_game.game_id,
             )
-        except games_models.GamePlayer.DoesNotExist:
+        except (games_models.Player.DoesNotExist, games_models.GamePlayer.DoesNotExist):
             game_player = None
 
     if game_state_presenter.winning_player is not None:

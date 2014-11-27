@@ -43,3 +43,6 @@ class GamePlayer(models.Model):
 
     has_won = models.BooleanField(default=False)
     plays_first = models.BooleanField(default=False)
+
+    def __unicode__(self):
+        return "GamePlayer:%s" % (self.id,)

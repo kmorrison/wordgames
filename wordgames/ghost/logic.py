@@ -31,6 +31,7 @@ class StateMachineError(Exception):
 
 
 GameStatePresenter = namedtuple('GameStatePresenter', [
+    'id',
     'game_type',
 
     'game_player_to_move',
@@ -99,6 +100,7 @@ class GhostLogic(object):
 
 
         return GameStatePresenter(
+            id=ghost_game.id,
             game_type=models.GameType(ghost_game.game_type),
             game_player_to_move=game_player_to_move,
             winning_player=winning_player,
@@ -112,6 +114,12 @@ class GhostLogic(object):
             is_challenge_issued=bool(game.time_ended is None) and bool(challenge is not None),
             is_playing=bool(game.time_ended is None) and bool(challenge is None),
         )
+
+    @classmethod
+    def latest_games(cls, n):
+        ghost_games = models.GhostGame.objects.order_by('-id')[:n]
+        # This might be _really_ slow. current_game_state does a lot of computation.
+        return [cls.current_game_state(ghost_game.game_id) for ghost_game in ghost_games]
 
     @classmethod
     @transaction.atomic
