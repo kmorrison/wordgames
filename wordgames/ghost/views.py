@@ -93,6 +93,7 @@ def game_view(request, ghost_game_id):
     ghost_game = get_object_or_404(models.GhostGame, pk=ghost_game_id)
     game_state_presenter = logic.GhostLogic.current_game_state(ghost_game.game_id)
 
+    game_player = None
     if request.user.is_active:
         # Find out if the user is playing this game.
         # TODO: Make this a straight join.
@@ -105,7 +106,7 @@ def game_view(request, ghost_game_id):
                 game_id=ghost_game.game_id,
             )
         except (games_models.Player.DoesNotExist, games_models.GamePlayer.DoesNotExist):
-            game_player = None
+            pass
 
     if game_state_presenter.winning_player is not None:
         winning_player = games_logic.GamesLogic.load_player(game_state_presenter.winning_player.id)
