@@ -46,10 +46,15 @@
     height: 60px;
 }
 
-.challenge-wrapper {
+.actions-wrapper {
     display: block;
     clear: left;
     margin-left: 10px;
+}
+
+.ghost-action {
+    float: left;
+    margin-right: 10px;
 }
 
 .ghost-submit {

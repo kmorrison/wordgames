@@ -17,6 +17,9 @@ def assign_random_start():
     return random.random() > 0.5
 
 
+MIN_WORD_SIZE = 4
+
+
 class InvalidGuessException(Exception):
     pass
 
@@ -29,7 +32,10 @@ class StateMachineError(Exception):
 
 GameStatePresenter = namedtuple('GameStatePresenter', [
     'game_type',
+
     'game_player_to_move',
+    'winning_player',
+    'game_players',
 
     'word_so_far',
     'legal_positions_to_play',
@@ -38,7 +44,6 @@ GameStatePresenter = namedtuple('GameStatePresenter', [
     'is_challenge_issued',
     'is_over',
     'ending_reason',
-    'winning_player',
 ])
 
 class PartialWordChecker(object):
@@ -96,6 +101,8 @@ class GhostLogic(object):
         return GameStatePresenter(
             game_type=models.GameType(ghost_game.game_type),
             game_player_to_move=game_player_to_move,
+            winning_player=winning_player,
+            game_players=game_players,
 
             word_so_far=word_so_far,
             legal_positions_to_play=legal_positions_to_play,
@@ -104,7 +111,6 @@ class GhostLogic(object):
             ending_reason=models.GameEndingReason(ghost_game.ending_reason),
             is_challenge_issued=bool(game.time_ended is None) and bool(challenge is not None),
             is_playing=bool(game.time_ended is None) and bool(challenge is None),
-            winning_player=winning_player,
         )
 
     @classmethod
@@ -248,6 +254,7 @@ class GhostLogic(object):
 
         responder_wins = bool(
             intended_word in wordlist.wordset
+            and len(intended_word) >= MIN_WORD_SIZE
             and PartialWordChecker.for_game_type(
                 game_state.game_type
             )(game_state.word_so_far, intended_word)
@@ -269,3 +276,51 @@ class GhostLogic(object):
         game_logic.GamesLogic.end_game(game_player.game_id, winning_game_player_id)
 
         return challenge
+
+    @classmethod
+    @transaction.atomic
+    def word_spelled_accusation(cls, game_player):
+        game_state = cls.current_game_state(game_player.game_id)
+
+        if game_state.is_over:
+            return game_state
+        if game_state.is_challenge_issued:
+            raise StateMachineError()
+        cls._validate_player_is_next_to_move(
+            game_state,
+            game_player,
+        )
+
+        this_player_wins = bool(
+            game_state.word_so_far in wordlist.wordset
+            and len(game_state.word_so_far) >= MIN_WORD_SIZE
+        )
+        if this_player_wins:
+            game_ending_reason = models.GameEndingReason.SPELLED
+            winning_game_player_id = game_player.id
+        else:
+            game_ending_reason = models.GameEndingReason.CHALLENGE_LOST
+            winning_game_player_id, = [gp.id for gp in game_state.game_players if gp.id != game_player.id]
+
+        ghost_game = models.GhostGame.objects.get(game_id=game_player.game_id)
+        ghost_game.ending_reason = game_ending_reason.value
+        ghost_game.save()
+
+        game_logic.GamesLogic.end_game(game_player.game_id, winning_game_player_id)
+        return cls.current_game_state(game_player.game_id)
+
+    @classmethod
+    @transaction.atomic
+    def resign(cls, game_player):
+        game_state = cls.current_game_state(game_player.game_id)
+
+        if game_state.is_over:
+            return game_state
+
+        ghost_game = models.GhostGame.objects.get(game_id=game_player.game_id)
+        ghost_game.ending_reason = models.GameEndingReason.RESIGN.value
+        ghost_game.save()
+
+        winning_game_player_id, = [gp.id for gp in game_state.game_players if gp.id != game_player.id]
+        game_logic.GamesLogic.end_game(game_player.game_id, winning_game_player_id)
+        return cls.current_game_state(game_player.game_id)

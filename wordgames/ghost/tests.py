@@ -336,3 +336,151 @@ class LogicChallengeResponseTestCase(TestCase):
             models.GameEndingReason.CHALLENGE_WON,
         )
         self.assertTrue(current_game_state.is_over)
+
+    def test_word_must_be_long_enough(self):
+        GhostLogic.new_guess(
+            self.game_player1,
+            'f',
+            0,
+        )
+        challenge = GhostLogic.issue_challenge(
+            self.game_player2,
+        )
+        challenge_modified = GhostLogic.respond_to_challenge(
+            self.game_player1,
+            'for',
+        )
+
+        current_game_state = GhostLogic.current_game_state(
+            self.ghost_game.game_id,
+        )
+        self.assertEqual(
+            models.GameEndingReason(current_game_state.ending_reason),
+            models.GameEndingReason.CHALLENGE_WON,
+        )
+
+class LogicWordSpelledTestCase(TestCase):
+    def setUp(self):
+        self.player1 = game_models.Player()
+        self.player1.save()
+        self.player2 = game_models.Player()
+        self.player2.save()
+        self.ghost_game = GhostLogic.start_game(
+            self.player1,
+            self.player2,
+            first_player_starts_first=True,
+        )
+        self.game_player1 = game_models.GamePlayer.objects.get(
+            game_id=self.ghost_game.game_id,
+            player_id=self.player1.id,
+        )
+        self.game_player2 = game_models.GamePlayer.objects.get(
+            game_id=self.ghost_game.game_id,
+            player_id=self.player2.id,
+        )
+
+    def test_word_spelled(self):
+        GhostLogic.new_guess(
+            self.game_player1,
+            'f',
+            0,
+        )
+        GhostLogic.new_guess(
+            self.game_player2,
+            'o',
+            1,
+        )
+        GhostLogic.new_guess(
+            self.game_player1,
+            'r',
+            2,
+        )
+        GhostLogic.new_guess(
+            self.game_player2,
+            'k',
+            3,
+        )
+        game_state = GhostLogic.word_spelled_accusation(
+            self.game_player1,
+        )
+        self.assertEqual(
+            game_state.ending_reason,
+            models.GameEndingReason.SPELLED,
+        )
+        self.assertEqual(
+            game_state.winning_player.id,
+            self.game_player1.id,
+        )
+
+    def test_is_not_a_word(self):
+        GhostLogic.new_guess(
+            self.game_player1,
+            'f',
+            0,
+        )
+        GhostLogic.new_guess(
+            self.game_player2,
+            'o',
+            1,
+        )
+        GhostLogic.new_guess(
+            self.game_player1,
+            'r',
+            2,
+        )
+        GhostLogic.new_guess(
+            self.game_player2,
+            'x',
+            3,
+        )
+        game_state = GhostLogic.word_spelled_accusation(
+            self.game_player1,
+        )
+        self.assertEqual(
+            game_state.ending_reason,
+            models.GameEndingReason.CHALLENGE_LOST,
+        )
+        self.assertEqual(
+            game_state.winning_player.id,
+            self.game_player2.id,
+        )
+
+class LogicResignTestCase(TestCase):
+    def setUp(self):
+        self.player1 = game_models.Player()
+        self.player1.save()
+        self.player2 = game_models.Player()
+        self.player2.save()
+        self.ghost_game = GhostLogic.start_game(
+            self.player1,
+            self.player2,
+            first_player_starts_first=True,
+        )
+        self.game_player1 = game_models.GamePlayer.objects.get(
+            game_id=self.ghost_game.game_id,
+            player_id=self.player1.id,
+        )
+        self.game_player2 = game_models.GamePlayer.objects.get(
+            game_id=self.ghost_game.game_id,
+            player_id=self.player2.id,
+        )
+
+    def test_resign(self):
+        game_state = GhostLogic.resign(self.game_player1)
+        self.assertEqual(game_state.winning_player.id, self.game_player2.id)
+
+    def test_can_resign_when_not_your_turn(self):
+        game_state = GhostLogic.resign(self.game_player2)
+        self.assertEqual(game_state.winning_player.id, self.game_player1.id)
+
+    def test_can_resign_in_challenge_state(self):
+        GhostLogic.new_guess(
+            self.game_player1,
+            'f',
+            0,
+        )
+        GhostLogic.issue_challenge(
+            self.game_player2,
+        )
+        game_state = GhostLogic.resign(self.game_player2)
+        self.assertEqual(game_state.winning_player.id, self.game_player1.id)

@@ -103,13 +103,15 @@ def game_view(request, ghost_game_id):
 
     if game_state_presenter.winning_player is not None:
         winning_player = games_logic.GamesLogic.load_player(game_state_presenter.winning_player.id)
+    else:
+        winning_player = None
     return render_to_response(
         'ghost/game_view.html',
         dict(
             requesting_game_player=game_player,
             game_state_presenter=game_state_presenter,
             ghost_game_id=ghost_game.id,
-            winning_player=winning_player or None,
+            winning_player=winning_player,
         ),
         RequestContext(request),
     )
@@ -227,6 +229,75 @@ def challenge_respond(request, ghost_game_id):
     elif game_state_presenter.ending_reason == models.GameEndingReason.CHALLENGE_WON:
         messages.error(request, 'You lost! "%s" not a word, according to our databases.' % (challenge.response.upper(),))
 
+    return redirect(
+        'ghost:game_view',
+        ghost_game_id=ghost_game.id,
+    )
+
+@login_required
+def word_spelled_post(request, ghost_game_id):
+    # TODO: Dry this up
+    ghost_game = get_object_or_404(models.GhostGame, pk=ghost_game_id)
+    game_player = _load_player_for_game(request, ghost_game)
+    if game_player is None:
+        # The player submitted a guess for a game that wasn't theirs. Naughty.
+        # Show them the game they yearn for so badly.
+        messages.error(request, "That's not your game!")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
+
+    assert request.method == 'POST'
+    try:
+        game_state_presenter = logic.GhostLogic.word_spelled_accusation(
+            game_player,
+        )
+    except (logic.InvalidGuessException, logic.StaleOperation, logic.StateMachineError):
+        messages.error(request, "Can't do that right now, sorry.")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
+
+    if game_state_presenter.ending_reason == models.GameEndingReason.CHALLENGE_LOST:
+        messages.error(request, 'You lost! "%s" not a word, according to our databases.' % (game_state_presenter.word_so_far.upper(),))
+    elif game_state_presenter.ending_reason == models.GameEndingReason.SPELLED:
+        messages.success(request, 'You won! "%s" was a word.' % (game_state_presenter.word_so_far.upper(),))
+    return redirect(
+        'ghost:game_view',
+        ghost_game_id=ghost_game.id,
+    )
+
+
+@login_required
+def resign_post(request, ghost_game_id):
+    # TODO: Dry this up
+    ghost_game = get_object_or_404(models.GhostGame, pk=ghost_game_id)
+    game_player = _load_player_for_game(request, ghost_game)
+    if game_player is None:
+        # The player submitted a guess for a game that wasn't theirs. Naughty.
+        # Show them the game they yearn for so badly.
+        messages.error(request, "That's not your game!")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
+
+    assert request.method == 'POST'
+    try:
+        game_state_presenter = logic.GhostLogic.resign(
+            game_player,
+        )
+    except (logic.InvalidGuessException, logic.StaleOperation, logic.StateMachineError):
+        messages.error(request, "Can't do that right now, sorry.")
+        return redirect(
+            'ghost:game_view',
+            ghost_game_id=ghost_game.id,
+        )
+
+    if game_state_presenter.ending_reason == models.GameEndingReason.RESIGN:
+        messages.info(request, 'You resigned. Better luck next time')
     return redirect(
         'ghost:game_view',
         ghost_game_id=ghost_game.id,
