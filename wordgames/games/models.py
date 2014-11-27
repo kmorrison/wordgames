@@ -9,6 +9,16 @@ class Player(models.Model):
     # guests
     user = models.ForeignKey(User, null=True)
 
+    @property
+    def name(self):
+        if self.user is not None:
+            return self.user.username
+        return 'Unknown'
+
+    def __unicode__(self):
+        return self.name
+
+
 
 class Game(models.Model):
     time_created = models.DateTimeField(auto_now_add=True)

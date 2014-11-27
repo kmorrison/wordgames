@@ -11,12 +11,16 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
-    url(r'^$',  # noqa
+    url(
+        r'^$',  # noqa
         TemplateView.as_view(template_name='pages/home.html'),
-        name="home"),
-    url(r'^about/$',
+        name="home"
+    ),
+    url(
+        r'^about/$',
         TemplateView.as_view(template_name='pages/about.html'),
-        name="about"),
+        name="about",
+    ),
 
     # Uncomment the next line to enable the admin:
     url(r'^admin/', include(admin.site.urls)),
