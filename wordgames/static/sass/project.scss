@@ -31,3 +31,36 @@
   background-color: #f2dede;
   border-color: #eed3d7;
 }
+
+.ghost-letter {
+    float: left;
+    padding: 10px;
+    margin: 10px;
+    margin-bottom: 40px;
+    font-size: 200%;
+    background-color: #dff0d8;
+    border-radius: 5px;
+    width: 70px;
+    text-align: center;
+    height: 60px;
+}
+
+.actions-wrapper {
+    display: block;
+    clear: left;
+    margin-left: 10px;
+}
+
+.ghost-action {
+    float: left;
+    margin-right: 10px;
+}
+
+.ghost-submit {
+    display: block;
+    clear: left;
+}
+
+.current-games {
+    margin-top: 30px;
+}
